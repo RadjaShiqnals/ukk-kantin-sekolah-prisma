@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin_stan
+  siswa
+  admin
+}
+
+enum Status {
+  belum_dikonfirmasi
+  dimasak
+  diantar
+  sampai
+}
+
+enum JenisMakanan {
+  makanan
+  minuman
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  name             String
+  username         String
+  email            String    @unique
+  emailVerifiedAt  DateTime? @map("email_verified_at")
+  password         String
+  role             Role
+  rememberToken    String?   @map("remember_token")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  stan             Stan[]
+  siswa            Siswa[]
+  sessions         Session[]
+
+  @@map("users")
+}
+
+model PasswordResetToken {
+  email     String    @id
+  token     String
+  createdAt DateTime? @map("created_at")
+
+  @@map("password_reset_tokens")
+}
+
+model Session {
+  id           String  @id
+  userId       Int?    @map("user_id")
+  ipAddress    String? @map("ip_address") @db.VarChar(45)
+  userAgent    String? @map("user_agent") @db.Text
+  payload      String  @db.LongText
+  lastActivity Int     @map("last_activity")
+  user         User?   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([lastActivity])
+  @@map("sessions")
+}
+
+model Stan {
+  id           Int          @id @default(autoincrement())
+  namaStan     String       @map("nama_stan") @db.VarChar(100)
+  namaPemilik  String       @map("nama_pemilik") @db.VarChar(100)
+  telp         String       @db.VarChar(20)
+  userId       Int          @map("id_user")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  user         User         @relation(fields: [userId], references: [id])
+  menu         Menu[]
+  transaksi    Transaksi[]
+
+  @@map("stan")
+}
+
+model Menu {
+  id              Int           @id @default(autoincrement())
+  namaMakanan     String        @map("nama_makanan") @db.VarChar(100)
+  harga          Float
+  jenis          JenisMakanan
+  foto           String        @db.VarChar(255)
+  deskripsi      String        @db.Text
+  stanId         Int           @map("id_stan")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  stan           Stan          @relation(fields: [stanId], references: [id])
+  menuDiskon     MenuDiskon[]
+  detailTransaksi DetailTransaksi[]
+
+  @@map("menu")
+}
+
+model Siswa {
+  id        Int         @id @default(autoincrement())
+  namaSiswa String      @map("nama_siswa") @db.VarChar(100)
+  alamat    String      @db.Text
+  telp      String      @db.VarChar(20)
+  userId    Int         @map("id_user")
+  foto      String      @db.VarChar(255)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  user      User        @relation(fields: [userId], references: [id])
+  transaksi Transaksi[]
+
+  @@map("siswa")
+}
+
+model Diskon {
+  id               Int          @id @default(autoincrement())
+  namaDiskon      String       @map("nama_diskon") @db.VarChar(100)
+  persentaseDiskon Float       @map("persentase_diskon")
+  tanggalAwal     DateTime     @map("tanggal_awal")
+  tanggalAkhir    DateTime     @map("tanggal_akhir")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  menuDiskon      MenuDiskon[]
+
+  @@map("diskon")
+}
+
+model MenuDiskon {
+  id        Int      @id @default(autoincrement())
+  menuId    Int      @map("id_menu")
+  diskonId  Int      @map("id_diskon")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  menu      Menu     @relation(fields: [menuId], references: [id])
+  diskon    Diskon   @relation(fields: [diskonId], references: [id])
+
+  @@map("menu_diskon")
+}
+
+model Transaksi {
+  id              Int               @id @default(autoincrement())
+  tanggal         DateTime
+  stanId          Int              @map("id_stan")
+  siswaId         Int              @map("id_siswa")
+  status          Status
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  stan            Stan             @relation(fields: [stanId], references: [id])
+  siswa           Siswa            @relation(fields: [siswaId], references: [id])
+  detailTransaksi DetailTransaksi[]
+
+  @@map("transaksi")
+}
+
+model DetailTransaksi {
+  id          Int       @id @default(autoincrement())
+  transaksiId Int       @map("id_transaksi")
+  menuId      Int       @map("id_menu")
+  qty         Int
+  hargaBeli   Float     @map("harga_beli")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  transaksi   Transaksi @relation(fields: [transaksiId], references: [id])
+  menu        Menu      @relation(fields: [menuId], references: [id])
+
+  @@map("detail_transaksi")
+}
